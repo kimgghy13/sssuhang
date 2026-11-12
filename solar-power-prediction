@@ -1,0 +1,78 @@
+
+# 1. 필요한 라이브러리 불러오기
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# 2. CSV 파일 불러오기
+df = pd.read_csv(
+    "한국동서발전(주)_전국 태양광 발전량 예측값_20241203 (1).csv",
+    encoding="cp949"
+)
+
+# 3. 사용할 독립 변수와 종속 변수 설정
+features = [
+    "기온",
+    "습도",
+    "풍속",
+    "일사량 예측값",
+    "시도명",
+    "전체 태양광 설비용량(MW)"
+]
+
+target = "태양광 발전량 예측값 총합(MWh)"
+
+X = df[features]
+y = df[target]
+
+# 4. 지역 데이터를 숫자로 변환
+preprocessor = ColumnTransformer(
+    transformers=[
+        ("region", OneHotEncoder(handle_unknown="ignore"), ["시도명"])
+    ],
+    remainder="passthrough"
+)
+
+# 5. 선형회귀 모델 만들기
+model = Pipeline([
+    ("preprocessing", preprocessor),
+    ("regression", LinearRegression())
+])
+
+# 6. 학습 데이터와 테스트 데이터 나누기
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# 7. 모델 학습하기
+model.fit(X_train, y_train)
+
+# 8. 발전량 예측하기
+y_pred = model.predict(X_test)
+
+# 9. 모델 성능 확인하기
+print("평균 절대 오차:", mean_absolute_error(y_test, y_pred))
+print("평균 제곱근 오차:", mean_squared_error(y_test, y_pred) ** 0.5)
+print("모델 결정계수:", r2_score(y_test, y_pred))
+
+# 10. 실제 데이터와 예측값 그래프로 비교하기
+plt.figure(figsize=(8, 5))
+
+plt.scatter(y_test, y_pred, alpha=0.7)
+plt.plot(
+    [0, max(y_test.max(), y_pred.max())],
+    [0, max(y_test.max(), y_pred.max())],
+    color="red"
+)
+
+plt.xlabel("실제 데이터의 발전량(MWh)")
+plt.ylabel("모델이 예측한 발전량(MWh)")
+plt.title("태양광 발전량 예측 결과")
+plt.grid()
+plt.show()
